@@ -37,25 +37,31 @@ class NODE():
                self.weights.append(0)
         
         self.value = 0
-
-
+        self.prev_layer_node_values = []
     def calculate(self):
-        return
+        if self.layer != 0:
+            for i in self.prev_layer_node_ids:
+                self.prev_layer_node_values.append(Nodes[i].value)
+        print(self.prev_layer_node_values)
+        print(self.layer)
 
 
         
         
 
 def INIT():
-    node_count = []
+    node_arr = []
     for i in range(len(Layers)):
-        node_count.append(Layers[i])# gets the number of neurons in this layer
+        node_arr.append(Layers[i])# gets the number of neurons in this layer
     id = 0
-    for n in range(len(Layers)):
-        for i in range(node_count[n]):
-            Nodes.append(NODE(n, id))
+    for layer in range(len(Layers)):
+        for i in range(node_arr[layer]):
+            Nodes.append(NODE(layer, id))
             id += 1
-        for i in range(node_count[n]):
+    node_count = 0
+    for i in range(len(Layers)):
+        node_count += Layers[i]
+    for i in range(node_count):
             Nodes[i].calculate()
 INIT()
 while True:
