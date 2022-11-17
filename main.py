@@ -24,7 +24,7 @@ class bcolors:
 
 Layers = [3, 4, 2]
 Nodes = []
-In = []
+In = [1,1,1]
 Out = []
 
 class NODE():
@@ -54,7 +54,7 @@ class NODE():
         self.prev_layer_node_values = []
     def calculate(self):
         if self.layer == 0:
-            print('idk')
+            self.value = In[self.node_id]
         if self.layer != 0:
             for i in self.prev_layer_node_ids:
                 self.prev_layer_node_values.append(Nodes[i].value)
