@@ -88,6 +88,17 @@ def CALC_ALL():
         node_count += Layers[i]
     for i in range(node_count):
             Nodes[i].calculate()
+
+def Get_Node_By_Coord(layer, place_in_layer):
+    if place_in_layer > Layers[layer]:
+        print(f"{bcolors.WARNING}Error: place_in_layer out of range! Quitting!{bcolors.ENDC}")
+        exit()
+    id = 0
+    for i in range(layer-1):
+        id += Layers[i]
+    id += place_in_layer
+    return(Nodes[id])
+
             
 INIT()
 CALC_ALL()
