@@ -1,9 +1,10 @@
 # Event Loop to process "events" and get the "values" of the inputs
 import math
-from PyQt5.QtWidgets import QApplication, QMainWindow
+from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget
 import sys
 from PyQt5.QtGui import QPainter, QBrush, QPen, QColor
-from PyQt5.QtCore import Qt, QRect
+from PyQt5.QtCore import Qt, QRect, QThread
+import time
 
 class bcolors:
     HEADER = '\033[95m'
@@ -68,37 +69,11 @@ class NODE():
             self.value = ModifiedSigmoid(self.value)
             #print(self.prev_layer_node_values)
             #print(self.layer)
-        print(self.value)
+        #print(self.value)
         if self.layer == len(Layers):
             Out.append(self.value)
             
-def Display():
-    class Window(QMainWindow):
-        def __init__(self):
-            super().__init__()
 
-            self.setGeometry(300, 300, 1024, 720)
-            self.setWindowTitle("PyQt5 window")
-            self.show()
-            self.setStyleSheet("background-color: rgb(30,30,30);")
-        def paintEvent(self, event):
-            painter = QPainter(self)
-            brush_color = QColor(135, 206, 235)
-            pen_color = QColor(0, 0, 0)
-
-            # Create a brush and pen with the desired colors
-            brush = QBrush(brush_color)
-            pen = QPen(pen_color, 2)
-
-            # Draw a circle
-            circle_rect = QRect(50, 50, 100, 100)
-            painter.setBrush(brush)
-            painter.setPen(pen)
-            painter.drawEllipse(circle_rect)
-            self.update
-    app = QApplication(sys.argv)
-    window = Window()
-    sys.exit(app.exec_())
     
 
 
@@ -128,14 +103,79 @@ def Get_Node_By_Coord(layer, place_in_layer):
         print(f"{bcolors.WARNING}Error: place_in_layer out of range! Quitting!{bcolors.ENDC}")
         exit()
     id = 0
-    for i in range(layer-1):
+    for i in range(layer):
         id += Layers[i]
     id += place_in_layer
     return(Nodes[id])
+
+
+def Display():
+
+    def compute():
+        Draw_Locations = []
+        Draw_Colors = []
+        for x in range(len(Layers)):
+            for y in range(Layers[x]):
+                Draw_Locations.append(QRect(50*x+5, 30*y+5, 20, 20))
+                Draw_Colors.append(QColor(int(Get_Node_By_Coord(x,y).value*255),int(Get_Node_By_Coord(x,y).value*255),int(Get_Node_By_Coord(x,y).value*255)))
+                #print(Get_Node_By_Coord(x,y).node_id)
+                #print(Get_Node_By_Coord(x,y).value)
+                
+        return(Draw_Locations,Draw_Colors)
+
+
+    def draw_result(painter,result):
+        Draw_Locations, Draw_Colors = result
+        for i in range(len(Draw_Locations)):
+            painter.setBrush(QBrush(Draw_Colors[i]))
+            painter.setPen(QPen(Qt.black, 3))
+            painter.drawEllipse(Draw_Locations[i])
+        return()
+
+    class ComputationThread(QThread):
+        def __init__(self, widget):
+            super().__init__()
+            self.widget = widget
+
+        def run(self):
+            # Perform the computations in a separate thread
+            result = compute()
+
+            # Update the widget in the main thread
+            self.widget.update_result(result)
+
+    class MyWidget(QWidget):
+        def __init__(self):
+            super().__init__()
+            self.result = None
+
+        def paintEvent(self, event):
+            # Create and use the QPainter object within the paintEvent method
+            painter = QPainter(self)
+            painter.setRenderHint(QPainter.Antialiasing)
+
+            # Draw the result of the computations
+            if self.result is not None:
+                draw_result(painter, self.result)
+
+        def update_result(self, result):
+            # Update the result and redraw the widget
+            self.result = result
+            self.update()
+
+    app = QApplication(sys.argv)
+    window = MyWidget()
+    window.setStyleSheet("background-color: rgb(20,20,20);")
+    window.show()
+
+    # Create and start the computation thread
+    computation_thread = ComputationThread(window)
+    computation_thread.start()
+
+    sys.exit(app.exec_())
+
 
             
 INIT()
 CALC_ALL()
 Display()
-while True:
-    break
