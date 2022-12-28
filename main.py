@@ -3,7 +3,7 @@ import math
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget
 import sys
 from PyQt5.QtGui import QPainter, QBrush, QPen, QColor
-from PyQt5.QtCore import Qt, QRect, QThread
+from PyQt5.QtCore import Qt, QRect, QThread, QLine
 import time
 
 class bcolors:
@@ -55,6 +55,7 @@ class NODE():
         
         self.value = 0
         self.prev_layer_node_values = []
+        print(node_id, self.weights)
 
 
     def calculate(self):
@@ -114,22 +115,34 @@ def Display():
     def compute():
         Draw_Locations = []
         Draw_Colors = []
+        Max_Nodes_In_Layer = 0
+        Draw_Weights = []
+        for num in Layers: 
+            if num > Max_Nodes_In_Layer: Max_Nodes_In_Layer = num
         for x in range(len(Layers)):
             for y in range(Layers[x]):
-                Draw_Locations.append(QRect(50*x+5, 30*y+5, 20, 20))
+                Draw_Locations.append(QRect(50*x+5, (30*y+5) + int(((Max_Nodes_In_Layer*30)-(Layers[x]*30))/2), 20, 20))
                 Draw_Colors.append(QColor(int(Get_Node_By_Coord(x,y).value*255),int(Get_Node_By_Coord(x,y).value*255),int(Get_Node_By_Coord(x,y).value*255)))
-                #print(Get_Node_By_Coord(x,y).node_id)
-                #print(Get_Node_By_Coord(x,y).value)
+
+                for w in range(len(Get_Node_By_Coord(x,y).weights)):
+                    ids = Get_Node_By_Coord(x,y).prev_layer_node_ids
+                    for i in ids:
+                        Draw_Weights.append(QLine(Draw_Locations[i].x() +10,   Draw_Locations[i].y() +10,  x*50 +15,  y*30 +15))
+
+
                 
-        return(Draw_Locations,Draw_Colors)
+        return(Draw_Locations,Draw_Colors,Draw_Weights)
 
 
     def draw_result(painter,result):
-        Draw_Locations, Draw_Colors = result
+        Draw_Locations, Draw_Colors,Draw_Weights = result
         for i in range(len(Draw_Locations)):
             painter.setBrush(QBrush(Draw_Colors[i]))
-            painter.setPen(QPen(Qt.black, 3))
+            painter.setPen(QPen(Qt.black, 2))
             painter.drawEllipse(Draw_Locations[i])
+            for w in range(Nodes[i].node_id):
+             painter.drawLine(Draw_Weights[w+i])
+
         return()
 
     class ComputationThread(QThread):
@@ -165,7 +178,7 @@ def Display():
 
     app = QApplication(sys.argv)
     window = MyWidget()
-    window.setStyleSheet("background-color: rgb(20,20,20);")
+    window.setStyleSheet("background-color: rgb(50,50,50);")
     window.show()
 
     # Create and start the computation thread
@@ -179,3 +192,17 @@ def Display():
 INIT()
 CALC_ALL()
 Display()
+
+
+
+
+
+
+"""
+
+NOTES and IDEAS:
+
+    -file format for models be named FART (Futuristic Ai Retention Technology)
+
+
+"""
