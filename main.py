@@ -1,10 +1,11 @@
 # Event Loop to process "events" and get the "values" of the inputs
 import math
-from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget
+from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QPushButton, QMessageBox
 import sys
-from PyQt5.QtGui import QPainter, QBrush, QPen, QColor
-from PyQt5.QtCore import Qt, QRect, QThread, QLine
+from PyQt5.QtGui import QPainter, QBrush, QPen, QColor, QFont
+from PyQt5.QtCore import Qt, QRect, QThread, QLine, QRectF, QLineF
 import time
+import pickle
 
 class bcolors:
     HEADER = '\033[95m'
@@ -25,10 +26,20 @@ def ModifiedSigmoid(x):
         x=0
     return (1 / (1 + math.exp(-x)))-0.5
 
-Layers = [3, 4, 2]
+def increase_distance(x):
+    return (1 + math.log10(x))*0.5
+
+Layers = [3, 4,2]
 Nodes = []
 In = [1,1,1]
 Out = []
+
+Weights_To_Save = []
+Biases_To_Save = []
+
+# GUI settings
+Gui_Scale = 1
+Max_Weight_Width = 5
 
 class NODE():
     def __init__(self, layer, node_id):
@@ -55,7 +66,6 @@ class NODE():
         
         self.value = 0
         self.prev_layer_node_values = []
-        print(node_id, self.weights)
 
 
     def calculate(self):
@@ -73,9 +83,39 @@ class NODE():
         #print(self.value)
         if self.layer == len(Layers):
             Out.append(self.value)
-            
+    def load():
+        return
 
     
+    def save(self):
+        for i in self.weights:
+            Weights_To_Save.append(i)
+        Biases_To_Save.append(self.bias)
+
+        return
+            
+
+def Save_All():
+    with open('model.fart', 'wb') as f:
+        pickle.dump(Weights_To_Save, f)
+        pickle.dump(Biases_To_Save, f)
+    return  
+def Load_All():
+    with open('model.fart', 'rb') as f:
+        Weights_To_Load = pickle.load(f)
+        print(len(Weights_To_Load))
+        Biases_To_Load = pickle.load(f)
+        print(len(Biases_To_Load))
+    i=0
+    p=0
+    for node in Nodes:
+        node.bias = Biases_To_Load[i]
+
+        for w in range(len(node.weights)):
+            node.weights[w] = Weights_To_Load[p]
+            p+=1
+
+        i+=1
 
 
 
@@ -99,6 +139,14 @@ def CALC_ALL():
     for i in range(node_count):
             Nodes[i].calculate()
 
+def CALL_ALL(func, *args):
+    if len(In) != Layers[0]:
+        print(f"{bcolors.WARNING}Error: len(In) does not match Layers[0]! Quitting!{bcolors.ENDC}")
+        exit()
+    for node in Nodes:
+        function = getattr(node, func)
+        function()
+
 def Get_Node_By_Coord(layer, place_in_layer):
     if place_in_layer > Layers[layer]:
         print(f"{bcolors.WARNING}Error: place_in_layer out of range! Quitting!{bcolors.ENDC}")
@@ -113,35 +161,41 @@ def Get_Node_By_Coord(layer, place_in_layer):
 def Display():
 
     def compute():
-        Draw_Locations = []
-        Draw_Colors = []
+        Draw_Node_Locations = []
+        Draw_Node_Colors = []
         Max_Nodes_In_Layer = 0
-        Draw_Weights = []
+        Draw_Weight_Locations = []
+        Draw_Weight_Width = []
         for num in Layers: 
             if num > Max_Nodes_In_Layer: Max_Nodes_In_Layer = num
         for x in range(len(Layers)):
             for y in range(Layers[x]):
-                Draw_Locations.append(QRect(50*x+5, (30*y+5) + int(((Max_Nodes_In_Layer*30)-(Layers[x]*30))/2), 20, 20))
-                Draw_Colors.append(QColor(int(Get_Node_By_Coord(x,y).value*255),int(Get_Node_By_Coord(x,y).value*255),int(Get_Node_By_Coord(x,y).value*255)))
+                Draw_Node_Locations.append(QRectF(int(((50*x*increase_distance(Max_Nodes_In_Layer))+5)*Gui_Scale), int(((30*y+5) + ((Max_Nodes_In_Layer*30)-(Layers[x]*30))/2)*Gui_Scale), 20*Gui_Scale, 20*Gui_Scale))
+                Draw_Node_Colors.append(QColor(int((Get_Node_By_Coord(x,y).value*220)),int(Get_Node_By_Coord(x,y).value*225),int(Get_Node_By_Coord(x,y).value*255)))
+                
 
                 for w in range(len(Get_Node_By_Coord(x,y).weights)):
                     ids = Get_Node_By_Coord(x,y).prev_layer_node_ids
+                    weights = Get_Node_By_Coord(x,y).weights
                     for i in ids:
-                        Draw_Weights.append(QLine(Draw_Locations[i].x() +10,   Draw_Locations[i].y() +10,  x*50 +15,  y*30 +15))
+                        Draw_Weight_Locations.append(QLineF(Draw_Node_Locations[i].x() +10**Gui_Scale,   Draw_Node_Locations[i].y() +10*Gui_Scale,  int(((50*x*increase_distance(Max_Nodes_In_Layer))+15)*Gui_Scale),  int(((y*30 +15)+ int(((Max_Nodes_In_Layer*30)-(Layers[x]*30))/2))*Gui_Scale)))
+                    for i in range(len(weights)):
+                        Draw_Weight_Width.append(ModifiedSigmoid(weights[i])*Max_Weight_Width+1)
 
 
                 
-        return(Draw_Locations,Draw_Colors,Draw_Weights)
+        return(Draw_Node_Locations,Draw_Node_Colors,Draw_Weight_Locations, Draw_Weight_Width)
 
 
     def draw_result(painter,result):
-        Draw_Locations, Draw_Colors,Draw_Weights = result
+        Draw_Locations, Draw_Colors,Draw_Weights, Draw_Weights_Width = result
+        for w in range(len(Draw_Weights)):
+            painter.setPen(QPen(Qt.black, Draw_Weights_Width[w]))
+            painter.drawLine(Draw_Weights[w])
         for i in range(len(Draw_Locations)):
             painter.setBrush(QBrush(Draw_Colors[i]))
             painter.setPen(QPen(Qt.black, 2))
             painter.drawEllipse(Draw_Locations[i])
-            for w in range(Nodes[i].node_id):
-             painter.drawLine(Draw_Weights[w+i])
 
         return()
 
@@ -162,6 +216,25 @@ def Display():
             super().__init__()
             self.result = None
 
+            Max_Nodes_In_Layer = 0
+            for num in Layers: 
+                if num > Max_Nodes_In_Layer: Max_Nodes_In_Layer = num
+
+            self.save_button = QPushButton("SAVE", self)
+            self.save_button.move(int(len(Layers)*50*Gui_Scale*increase_distance(Max_Nodes_In_Layer)+10), 10)
+            self.save_button.clicked.connect(self.on_save_button_clicked)
+
+            self.load_button = QPushButton("LOAD", self)
+            self.load_button.move(int(len(Layers)*50*Gui_Scale*increase_distance(Max_Nodes_In_Layer)+10), 50)
+            self.load_button.clicked.connect(self.on_load_button_clicked)
+
+            self.save_button.setStyleSheet("background-color: rgb(64,71,84);")
+            self.load_button.setStyleSheet("background-color: rgb(64,71,84);")
+
+            self.save_button.setFont(QFont("Arial", 13, QFont.Bold))
+            self.load_button.setFont(QFont("Arial", 13, QFont.Bold))
+
+
         def paintEvent(self, event):
             # Create and use the QPainter object within the paintEvent method
             painter = QPainter(self)
@@ -176,9 +249,41 @@ def Display():
             self.result = result
             self.update()
 
+        def on_save_button_clicked(self, event):
+            message_box = QMessageBox(QMessageBox.Question, 'Confirmation', 'Are you shure you want to do this?\nThis wil overwrite the currently saved model', QMessageBox.Yes | QMessageBox.No)
+
+            # Show the message box and store the result (either QMessageBox.Yes or QMessageBox.No)
+            result = message_box.exec_()
+
+            # If the result is "Yes", do something
+            if result == QMessageBox.Yes:
+                CALL_ALL('save')
+                Save_All()
+            # If the result is "No", do something else
+            else:
+                return
+
+
+
+
+        def on_load_button_clicked(self, event):
+            message_box = QMessageBox(QMessageBox.Question, 'Confirmation', 'Are you shure you want to do this?\nThis wil overwrite the current model', QMessageBox.Yes | QMessageBox.No)
+
+            # Show the message box and store the result (either QMessageBox.Yes or QMessageBox.No)
+            result = message_box.exec_()
+
+            # If the result is "Yes", do something
+            if result == QMessageBox.Yes:
+                Load_All()
+            # If the result is "No", do something else
+            else:
+                return
+
+
     app = QApplication(sys.argv)
     window = MyWidget()
-    window.setStyleSheet("background-color: rgb(50,50,50);")
+    window.setGeometry(100, 100, 1028, 720)
+    window.setStyleSheet("background-color: rgb(40,44,52);color: white;")
     window.show()
 
     # Create and start the computation thread
